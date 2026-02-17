@@ -8,158 +8,119 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
+    body{
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
+      display:flex; justify-content:center; align-items:center;
+      min-height:100vh;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 16px;
+      padding:16px;
     }
 
-    .player {
-      background: rgba(255, 255, 255, 0.95);
+    .player{
+      background: rgba(255,255,255,0.95);
       backdrop-filter: blur(10px);
       padding: 32px 24px;
       border-radius: 32px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-      width: 100%;
-      max-width: 400px;
-      transition: all 0.3s ease;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      width:100%;
+      max-width:400px;
     }
 
-    .station-info { text-align: center; margin-bottom: 24px; }
-    .station-name { font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; }
-    .song-title { font-size: 18px; color: #4a5568; font-weight: 500; margin-bottom: 4px; word-break: break-word; }
-    .dj-name { font-size: 14px; color: #718096; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .station-info{ text-align:center; margin-bottom:24px; }
+    .station-name{ font-size:24px; font-weight:700; color:#1a1a1a; margin-bottom:8px; }
+    .song-title{ font-size:18px; color:#4a5568; font-weight:500; margin-bottom:4px; word-break:break-word; }
+    .dj-name{ font-size:14px; color:#718096; display:flex; align-items:center; justify-content:center; gap:8px; }
 
-    .play-button-container { display: flex; justify-content: center; margin: 32px 0; }
+    .play-button-container{ display:flex; justify-content:center; margin: 32px 0; }
 
-    .play-button {
-      width: 96px;
-      height: 96px;
-      border-radius: 50%;
+    .play-button{
+      width:96px; height:96px; border-radius:50%;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      color: white;
-      font-size: 48px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 20px 30px -10px rgba(102, 126, 234, 0.5);
-      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      border:none; color:#fff; font-size:48px;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      box-shadow: 0 20px 30px -10px rgba(102,126,234,0.5);
+      transition: transform .2s, box-shadow .2s, opacity .2s;
       -webkit-tap-highlight-color: transparent;
-      outline: none;
-      user-select: none;
+      user-select:none;
     }
-
-    .play-button:active {
-      transform: scale(0.95);
-      box-shadow: 0 10px 20px -5px rgba(102, 126, 234, 0.5);
-    }
-
-    .play-button.playing {
+    .play-button:active{ transform: scale(0.95); }
+    .play-button.playing{
       background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
-      box-shadow: 0 20px 30px -10px rgba(245, 101, 101, 0.5);
+      box-shadow: 0 20px 30px -10px rgba(245,101,101,0.5);
     }
 
-    .volume-section {
-      background: #f7fafc;
-      border-radius: 24px;
-      padding: 20px;
-      margin: 24px 0;
+    .volume-section{
+      background:#f7fafc;
+      border-radius:24px;
+      padding:20px;
+      margin:24px 0;
+    }
+    .volume-header{
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:12px; color:#2d3748; font-weight:600;
     }
 
-    .volume-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      color: #2d3748;
-      font-weight: 600;
-    }
+    .volume-slider{
+      width:100%;
+      height:8px;
+      border-radius:4px;
+      background:#e2e8f0;
+      outline:none;
+      -webkit-appearance:none;
+      appearance:none;
 
-    /* Важно для мобилок */
-    .volume-slider {
-      width: 100%;
-      height: 8px;
-      border-radius: 4px;
-      background: #e2e8f0;
-      outline: none;
-      -webkit-appearance: none;
-      appearance: none;
+      /* фикс для тача */
       touch-action: pan-x;
       position: relative;
       z-index: 5;
       cursor: pointer;
     }
-
-    .volume-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: #667eea;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
-      transition: transform 0.1s;
-      border: 2px solid white;
+    .volume-slider::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      width:24px; height:24px;
+      border-radius:50%;
+      background:#667eea;
+      box-shadow: 0 2px 6px rgba(102,126,234,0.4);
+      border:2px solid #fff;
+    }
+    .volume-slider::-moz-range-thumb{
+      width:24px; height:24px;
+      border-radius:50%;
+      background:#667eea;
+      box-shadow: 0 2px 6px rgba(102,126,234,0.4);
+      border:2px solid #fff;
     }
 
-    .volume-slider::-moz-range-thumb {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: #667eea;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
-      transition: transform 0.1s;
-      border: 2px solid white;
+    .stats-grid{ display:flex; gap:12px; margin:20px 0; }
+    .stat-item{ flex:1; background:#f7fafc; border-radius:16px; padding:12px; text-align:center; }
+    .stat-label{ font-size:12px; color:#718096; margin-bottom:4px; }
+    .stat-value{ font-size:18px; font-weight:700; color:#2d3748; }
+
+    .history-section{ background:#f7fafc; border-radius:16px; padding:16px; margin-top:20px; }
+    .history-title{ font-weight:600; color:#2d3748; margin-bottom:12px; font-size:16px; }
+    .history-list{ max-height:160px; overflow-y:auto; border-radius:12px; }
+    .history-item{ padding:10px; border-bottom:1px solid #e2e8f0; font-size:13px; color:#4a5568; display:flex; gap:8px; }
+    .history-item:last-child{ border-bottom:none; }
+    .history-time{ color:#667eea; font-weight:600; white-space:nowrap; }
+
+    .status-badge{
+      display:inline-block;
+      padding:6px 12px;
+      border-radius:20px;
+      font-size:12px;
+      font-weight:600;
+      margin-top:12px;
+      user-select:none;
     }
+    .status-badge.playing{ background:#c6f6d5; color:#22543d; }
+    .status-badge.paused{ background:#fed7d7; color:#742a2a; }
+    .status-badge.loading{ background:#feebc8; color:#7b341e; }
 
-    .stats-grid { display: flex; gap: 12px; margin: 20px 0; }
-    .stat-item { flex: 1; background: #f7fafc; border-radius: 16px; padding: 12px; text-align: center; }
-    .stat-label { font-size: 12px; color: #718096; margin-bottom: 4px; }
-    .stat-value { font-size: 18px; font-weight: 700; color: #2d3748; }
+    .loading{ opacity: 0.7; pointer-events: none; }
 
-    .history-section { background: #f7fafc; border-radius: 16px; padding: 16px; margin-top: 20px; }
-    .history-title { font-weight: 600; color: #2d3748; margin-bottom: 12px; font-size: 16px; }
-    .history-list { list-style: none; max-height: 160px; overflow-y: auto; border-radius: 12px; }
-
-    .history-item {
-      padding: 10px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 13px;
-      color: #4a5568;
-      display: flex;
-      gap: 8px;
-    }
-
-    .history-item:last-child { border-bottom: none; }
-    .history-time { color: #667eea; font-weight: 600; white-space: nowrap; }
-
-    .status-badge {
-      display: inline-block;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-top: 12px;
-      user-select: none;
-    }
-
-    .status-badge.playing { background: #c6f6d5; color: #22543d; }
-    .status-badge.paused  { background: #fed7d7; color: #742a2a; }
-    .status-badge.loading { background: #feebc8; color: #7b341e; }
-
-    .loading { opacity: 0.7; pointer-events: none; }
-
-    @media (max-width: 480px) {
-      .player { padding: 24px 16px; }
-      .play-button { width: 80px; height: 80px; font-size: 40px; }
+    @media (max-width: 480px){
+      .player{ padding:24px 16px; }
+      .play-button{ width:80px; height:80px; font-size:40px; }
     }
   </style>
 </head>
@@ -229,12 +190,16 @@
 
       class RadioPlayer {
         constructor() {
-          // Audio element
           this.audio = new Audio();
           this.audio.preload = "none";
-          this.audio.volume = 1; // ВАЖНО: volume держим 1, регулировка будет через GainNode
+          this.audio.volume = 1;      // держим 1
+          this.audio.muted = false;
+          // важно для iOS:
+          this.audio.playsInline = true;
+          this.audio.setAttribute("playsinline", "");
+          this.audio.setAttribute("webkit-playsinline", "");
 
-          // WebAudio (для нормальной регулировки громкости, включая iOS)
+          // WebAudio
           this.audioCtx = null;
           this.sourceNode = null;
           this.gainNode = null;
@@ -271,15 +236,14 @@
           this.startInfoUpdates();
         }
 
-        ensureAudioGraph() {
+        ensureWebAudio() {
           if (this.audioCtx) return;
 
           const AC = window.AudioContext || window.webkitAudioContext;
           this.audioCtx = new AC();
 
-          // Важно: source можно создать только один раз на этот audio-элемент
+          // ВАЖНО: MediaElementSource можно создать один раз на этот audio
           this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
-
           this.gainNode = this.audioCtx.createGain();
           this.gainNode.gain.value = this.currentVolume / 100;
 
@@ -287,15 +251,61 @@
           this.gainNode.connect(this.audioCtx.destination);
         }
 
-        async resumeAudioContextIfNeeded() {
+        async resumeWebAudio() {
           if (!this.audioCtx) return;
           if (this.audioCtx.state === "suspended") {
             try { await this.audioCtx.resume(); } catch (_) {}
           }
         }
 
+        normalizeVolume(v) {
+          const n = Number(v);
+          if (!Number.isFinite(n)) return 0;
+          return Math.min(100, Math.max(0, Math.round(n)));
+        }
+
+        renderVolumeUI(v) {
+          this.el.volumePercent.textContent = v + "%";
+          this.el.volumeSlider.style.background =
+            `linear-gradient(to right, #667eea 0%, #667eea ${v}%, #e2e8f0 ${v}%, #e2e8f0 100%)`;
+        }
+
+        applyGain(v) {
+          // если WebAudio уже поднят — меняем gain
+          if (this.gainNode && this.audioCtx) {
+            const now = this.audioCtx.currentTime;
+            const target = v / 100;
+
+            this.gainNode.gain.cancelScheduledValues(now);
+            this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+            this.gainNode.gain.linearRampToValueAtTime(target, now + 0.03);
+          }
+        }
+
+        setVolume(v) {
+          const vol = this.normalizeVolume(v);
+          this.currentVolume = vol;
+
+          this.el.volumeSlider.value = String(vol);
+          this.renderVolumeUI(vol);
+
+          // mute как крайний случай
+          this.audio.muted = (vol === 0);
+
+          // основная регулировка
+          this.applyGain(vol);
+        }
+
         setupEventListeners() {
-          this.el.playBtn.addEventListener("click", () => this.togglePlay());
+          this.el.playBtn.addEventListener("click", async () => {
+            // ВСЁ, что связано с WebAudio, делаем в жесте пользователя (iOS правило)
+            this.ensureWebAudio();
+            await this.resumeWebAudio();
+
+            if (this.isLoading) return;
+            if (this.isPlaying) this.pause();
+            else await this.play();
+          });
 
           this.el.volumeSlider.addEventListener("input", (e) => {
             this.setVolume(e.target.value);
@@ -325,6 +335,8 @@
 
           this.audio.addEventListener("canplay", () => {
             this.isLoading = false;
+            // ещё раз применим gain
+            this.applyGain(this.currentVolume);
             this.updateUI();
           });
 
@@ -343,64 +355,16 @@
           });
         }
 
-        normalizeVolume(v) {
-          const n = Number(v);
-          if (!Number.isFinite(n)) return 0;
-          return Math.min(100, Math.max(0, Math.round(n)));
-        }
-
-        renderVolumeUI(v) {
-          this.el.volumePercent.textContent = v + "%";
-          this.el.volumeSlider.style.background =
-            `linear-gradient(to right, #667eea 0%, #667eea ${v}%, #e2e8f0 ${v}%, #e2e8f0 100%)`;
-        }
-
-        setVolume(v) {
-          const vol = this.normalizeVolume(v);
-          this.currentVolume = vol;
-
-          this.el.volumeSlider.value = String(vol);
-          this.renderVolumeUI(vol);
-
-          // Регулировка через GainNode (реально работает)
-          if (this.gainNode) {
-            const now = this.audioCtx ? this.audioCtx.currentTime : 0;
-            // Плавное изменение, без щелчков
-            this.gainNode.gain.cancelScheduledValues(now);
-            this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
-            this.gainNode.gain.linearRampToValueAtTime(vol / 100, now + 0.03);
-          }
-
-          // mute оставим как доп. удобство
-          this.audio.muted = (vol === 0);
-        }
-
-        async togglePlay() {
-          if (this.isLoading) return;
-
-          if (this.isPlaying) {
-            this.pause();
-          } else {
-            await this.play();
-          }
-        }
-
         async play() {
-          if (this.isLoading) return;
-
           this.isLoading = true;
           this.updateUI();
 
-          // Создаём WebAudio-цепочку только по жесту пользователя (клик)
-          this.ensureAudioGraph();
-          await this.resumeAudioContextIfNeeded();
-
-          // Источник
           this.audio.src = CONFIG.streamUrl;
           this.audio.load();
 
-          // Применим громкость до старта
-          this.setVolume(this.currentVolume);
+          // гарантируем громкость до старта
+          this.audio.volume = 1;
+          this.applyGain(this.currentVolume);
 
           try {
             await this.audio.play();
@@ -441,22 +405,18 @@
               this.isLoading = true;
               this.updateUI();
 
-              // для кеш-обхода
               const url = CONFIG.streamUrl + (CONFIG.streamUrl.includes("?") ? "&" : "?") + "t=" + Date.now();
-
               this.audio.src = url;
               this.audio.load();
 
-              this.ensureAudioGraph();
-              await this.resumeAudioContextIfNeeded();
-
-              this.setVolume(this.currentVolume);
+              await this.resumeWebAudio();
+              this.applyGain(this.currentVolume);
 
               await this.audio.play();
               this.isLoading = false;
               this.isPlaying = true;
               this.updateUI();
-            } catch (e) {
+            } catch (_) {
               this.isLoading = false;
               this.updateUI();
             }
@@ -547,6 +507,7 @@
         loadSettings() {
           const saved = localStorage.getItem(CONFIG.storageKey);
           const v = saved !== null ? this.normalizeVolume(saved) : 75;
+
           this.currentVolume = v;
           this.el.volumeSlider.value = String(v);
           this.renderVolumeUI(v);
@@ -555,7 +516,6 @@
       }
 
       const boot = () => { window.radioPlayer = new RadioPlayer(); };
-
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
       else boot();
     })();
