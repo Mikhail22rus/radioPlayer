@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моё Радио</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+        
+        .player-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 400px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-top: 0;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .radio-player {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .station-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2a5298;
+            margin-bottom: 10px;
+        }
+        
+        .stream-url {
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+            background: #fff;
+            padding: 5px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .big-play-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 60px;
+            background: #2a5298;
+            border: none;
+            color: white;
+            font-size: 48px;
+            cursor: pointer;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .big-play-button:hover {
+            transform: scale(1.1);
+            background: #1e3c72;
+        }
+        
+        .big-play-button.playing {
+            background: #e53e3e;
+        }
+        
+        .big-play-button.playing:hover {
+            background: #c53030;
+        }
+        
+        .volume-container {
+            margin: 20px 0;
+            text-align: left;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+        
+        .volume-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        input[type=range] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #2a5298;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .info-panel {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .current-song {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+        
+        .dj-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .listeners-info {
+            background: #4caf50;
+            color: white;
+            padding: 8px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: bold;
+        }
+        
+        .last-songs {
+            margin-top: 20px;
+            text-align: left;
+            max-height: 150px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        
+        .last-songs h4 {
+            color: #333;
+            margin: 0 0 10px 0;
+        }
+        
+        .song-item {
+            padding: 8px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .song-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .song-time {
+            color: #2a5298;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: normal;
+            margin-top: 10px;
+        }
+        
+        .status-badge.playing {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status-badge.paused {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .status-badge.stopped {
+            background: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <h1>📻 МОЁ РАДИО</h1>
+        
+        <div class="radio-player">
+            <div class="station-name" id="stationName">Radio Station</div>
+            
+            <!-- Большая кнопка вкл/выкл -->
+            <button class="big-play-button" id="playPauseBtn">
+                ▶
+            </button>
+            
+            <div class="stream-url" id="streamUrl">
+                https://myradio24.org/98353
+            </div>
+            
+            <div class="volume-container">
+                <div class="volume-label">
+                    <span>🔊 Громкость</span>
+                    <span id="volumeValue">70%</span>
+                </div>
+                <input type="range" id="volumeSlider" min="0" max="100" value="70">
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="current-song" id="currentSong">
+                Загрузка информации...
+            </div>
+            
+            <div class="dj-info" id="djInfo">
+                DJ: ...
+            </div>
+            
+            <div class="listeners-info" id="listenersInfo">
+                👥 0 слушателей
+            </div>
+            
+            <div id="statusBadge" class="status-badge stopped">
+                ⏹ Остановлено
+            </div>
+        </div>
+        
+        <div class="last-songs" id="lastSongs">
+            <h4>🎵 Последние треки:</h4>
+            <div id="songsList">
+                <div class="song-item">Загрузка...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Конфигурация
+        const RADIO_STREAM = 'https://myradio24.org/98353';
+        const RADIO_API = 'https://myradio24.com/users/98353/status.json';
+        const STATION_NAME = 'Моё Радио';
+        
+        class RadioPlayer {
+            constructor() {
+                this.audio = new Audio();
+                this.isPlaying = false;
+                
+                // Элементы DOM
+                this.playBtn = document.getElementById('playPauseBtn');
+                this.volumeSlider = document.getElementById('volumeSlider');
+                this.volumeValue = document.getElementById('volumeValue');
+                this.currentSong = document.getElementById('currentSong');
+                this.djInfo = document.getElementById('djInfo');
+                this.listenersInfo = document.getElementById('listenersInfo');
+                this.statusBadge = document.getElementById('statusBadge');
+                this.songsList = document.getElementById('songsList');
+                this.stationName = document.getElementById('stationName');
+                this.streamUrl = document.getElementById('streamUrl');
+                
+                // Устанавливаем название станции
+                this.stationName.textContent = STATION_NAME;
+                this.streamUrl.textContent = RADIO_STREAM;
+                
+                // Настройка обработчиков
+                this.setupEventListeners();
+                
+                // Устанавливаем начальную громкость
+                const savedVolume = localStorage.getItem('radioVolume') || 70;
+                this.volumeSlider.value = savedVolume;
+                this.setVolume(savedVolume);
+                
+                // Запускаем обновление информации
+                this.fetchRadioInfo();
+                setInterval(() => this.fetchRadioInfo(), 15000);
+            }
+            
+            setupEventListeners() {
+                // Кнопка воспроизведения
+                this.playBtn.addEventListener('click', () => this.togglePlay());
+                
+                // Ползунок громкости
+                this.volumeSlider.addEventListener('input', (e) => {
+                    this.setVolume(e.target.value);
+                });
+                
+                // Обработка ошибок аудио - теперь просто пробуем переподключиться если играет
+                this.audio.addEventListener('error', (e) => {
+                    console.log('Ошибка потока, пробуем переподключиться...', e);
+                    if (this.isPlaying) {
+                        // Пробуем переподключиться через секунду
+                        setTimeout(() => {
+                            if (this.isPlaying) {
+                                this.audio.src = RADIO_STREAM;
+                                this.audio.play().catch(() => {});
+                            }
+                        }, 1000);
+                    }
+                });
+            }
+            
+            togglePlay() {
+                if (this.isPlaying) {
+                    this.pause();
+                } else {
+                    this.play();
+                }
+            }
+            
+            play() {
+                this.audio.src = RADIO_STREAM;
+                this.audio.play()
+                    .then(() => {
+                        this.isPlaying = true;
+                        this.updateButtonState();
+                        this.updateStatus('🔊 В эфире', 'playing');
+                    })
+                    .catch(error => {
+                        console.log('Ошибка воспроизведения, но не показываем пользователю');
+                        this.isPlaying = false;
+                        this.updateButtonState();
+                        this.updateStatus('⏸ Пауза', 'paused');
+                    });
+            }
+            
+            pause() {
+                this.audio.pause();
+                this.audio.src = '';
+                this.isPlaying = false;
+                this.updateButtonState();
+                this.updateStatus('⏸ Пауза', 'paused');
+            }
+            
+            setVolume(value) {
+                const volume = value / 100;
+                this.audio.volume = volume;
+                this.volumeValue.textContent = value + '%';
+                localStorage.setItem('radioVolume', value);
+            }
+            
+            updateButtonState() {
+                if (this.isPlaying) {
+                    this.playBtn.innerHTML = '⏸';
+                    this.playBtn.classList.add('playing');
+                } else {
+                    this.playBtn.innerHTML = '▶';
+                    this.playBtn.classList.remove('playing');
+                }
+            }
+            
+            updateStatus(text, type) {
+                this.statusBadge.textContent = text;
+                this.statusBadge.className = 'status-badge ' + type;
+            }
+            
+            async fetchRadioInfo() {
+                try {
+                    const response = await fetch(RADIO_API);
+                    const data = await response.json();
+                    
+                    // Обновляем информацию
+                    this.currentSong.textContent = data.song || 'Информация недоступна';
+                    this.djInfo.textContent = 'DJ: ' + (data.djname || 'Автоматический режим');
+                    this.listenersInfo.textContent = '👥 ' + (data.listeners || 0) + ' слушателей';
+                    
+                    // Обновляем последние песни
+                    this.updateLastSongs(data.songs);
+                    
+                } catch (error) {
+                    console.log('Ошибка получения информации, но не показываем пользователю');
+                }
+            }
+            
+            updateLastSongs(songs) {
+                if (!songs || !songs.length) {
+                    this.songsList.innerHTML = '<div class="song-item">Нет информации о треках</div>';
+                    return;
+                }
+                
+                this.songsList.innerHTML = '';
+                
+                songs.slice(0, 7).forEach(song => {
+                    const songElement = document.createElement('div');
+                    songElement.className = 'song-item';
+                    
+                    let songTime = '';
+                    let songName = '';
+                    
+                    if (Array.isArray(song)) {
+                        songTime = song[0] || '';
+                        songName = song[1] || '';
+                    } else {
+                        songTime = song.time || '';
+                        songName = song.song || '';
+                    }
+                    
+                    songElement.innerHTML = `
+                        <span class="song-time">${songTime}</span>
+                        <span>${songName}</span>
+                    `;
+                    
+                    this.songsList.appendChild(songElement);
+                });
+            }
+        }
+        
+        // Запускаем плеер после загрузки страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            new RadioPlayer();
+        });
+    </script>
+    
+    <!-- Скрипт myradio24 (опционально) -->
+    <script src="https://myradio24.com/player/player.js?v3.31" 
+            data-radio="98353" 
+            data-interval="15" 
+            data-vmid="0" 
+            data-lang="ru">
+    </script>
+</body>
+</html>
