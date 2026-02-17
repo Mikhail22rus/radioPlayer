@@ -261,6 +261,15 @@
         </div>
     </div>
     
+    <!-- Скрипт myradio24 (вставляем ДО нашего скрипта) -->
+    <script src="https://myradio24.com/player/player.js?v3.31" 
+            data-radio="98353" 
+            data-interval="15" 
+            data-vmid="0" 
+            data-lang="ru">
+    </script>
+    
+    <!-- Наш скрипт управления (после их скрипта) -->
     <script>
         // Конфигурация
         const RADIO_STREAM = 'https://myradio24.org/98353';
@@ -269,9 +278,6 @@
         
         class RadioPlayer {
             constructor() {
-                this.audio = new Audio();
-                this.isPlaying = false;
-                
                 // Элементы DOM
                 this.playBtn = document.getElementById('playPauseBtn');
                 this.volumeSlider = document.getElementById('volumeSlider');
@@ -284,6 +290,10 @@
                 this.stationName = document.getElementById('stationName');
                 this.streamUrl = document.getElementById('streamUrl');
                 
+                // Переменные состояния
+                this.isPlaying = false;
+                this.myAudio = null;
+                
                 // Устанавливаем название станции
                 this.stationName.textContent = STATION_NAME;
                 this.streamUrl.textContent = RADIO_STREAM;
@@ -294,11 +304,15 @@
                 // Устанавливаем начальную громкость
                 const savedVolume = localStorage.getItem('radioVolume') || 70;
                 this.volumeSlider.value = savedVolume;
-                this.setVolume(savedVolume);
+                this.volumeValue.textContent = savedVolume + '%';
                 
                 // Запускаем обновление информации
                 this.fetchRadioInfo();
                 setInterval(() => this.fetchRadioInfo(), 15000);
+                
+                // Ищем аудио элемент каждые 2 секунды (их скрипт создает его с задержкой)
+                this.findAudioElement();
+                setInterval(() => this.findAudioElement(), 2000);
             }
             
             setupEventListeners() {
@@ -307,61 +321,62 @@
                 
                 // Ползунок громкости
                 this.volumeSlider.addEventListener('input', (e) => {
-                    this.setVolume(e.target.value);
-                });
-                
-                // Обработка ошибок аудио - теперь просто пробуем переподключиться если играет
-                this.audio.addEventListener('error', (e) => {
-                    console.log('Ошибка потока, пробуем переподключиться...', e);
-                    if (this.isPlaying) {
-                        // Пробуем переподключиться через секунду
-                        setTimeout(() => {
-                            if (this.isPlaying) {
-                                this.audio.src = RADIO_STREAM;
-                                this.audio.play().catch(() => {});
-                            }
-                        }, 1000);
+                    const volume = e.target.value;
+                    this.volumeValue.textContent = volume + '%';
+                    localStorage.setItem('radioVolume', volume);
+                    
+                    // Если нашли аудио элемент - меняем громкость
+                    if (this.myAudio) {
+                        this.myAudio.volume = volume / 100;
                     }
                 });
             }
             
-            togglePlay() {
-                if (this.isPlaying) {
-                    this.pause();
-                } else {
-                    this.play();
-                }
-            }
-            
-            play() {
-                this.audio.src = RADIO_STREAM;
-                this.audio.play()
-                    .then(() => {
+            findAudioElement() {
+                // Ищем аудио элемент, который создал скрипт myradio24
+                const audioElement = document.querySelector('audio');
+                if (audioElement && audioElement !== this.myAudio) {
+                    console.log('Нашли аудио элемент!');
+                    this.myAudio = audioElement;
+                    
+                    // Устанавливаем сохраненную громкость
+                    this.myAudio.volume = this.volumeSlider.value / 100;
+                    
+                    // Отслеживаем состояние
+                    this.myAudio.addEventListener('play', () => {
                         this.isPlaying = true;
                         this.updateButtonState();
                         this.updateStatus('🔊 В эфире', 'playing');
-                    })
-                    .catch(error => {
-                        console.log('Ошибка воспроизведения, но не показываем пользователю');
+                    });
+                    
+                    this.myAudio.addEventListener('pause', () => {
                         this.isPlaying = false;
                         this.updateButtonState();
                         this.updateStatus('⏸ Пауза', 'paused');
                     });
+                    
+                    this.myAudio.addEventListener('error', () => {
+                        console.log('Ошибка воспроизведения');
+                        this.isPlaying = false;
+                        this.updateButtonState();
+                        this.updateStatus('⏸ Пауза', 'paused');
+                    });
+                }
             }
             
-            pause() {
-                this.audio.pause();
-                this.audio.src = '';
-                this.isPlaying = false;
-                this.updateButtonState();
-                this.updateStatus('⏸ Пауза', 'paused');
-            }
-            
-            setVolume(value) {
-                const volume = value / 100;
-                this.audio.volume = volume;
-                this.volumeValue.textContent = value + '%';
-                localStorage.setItem('radioVolume', value);
+            togglePlay() {
+                if (!this.myAudio) {
+                    console.log('Аудио еще не инициализировано');
+                    return;
+                }
+                
+                if (this.isPlaying) {
+                    this.myAudio.pause();
+                } else {
+                    this.myAudio.play().catch(e => {
+                        console.log('Ошибка воспроизведения');
+                    });
+                }
             }
             
             updateButtonState() {
@@ -384,16 +399,14 @@
                     const response = await fetch(RADIO_API);
                     const data = await response.json();
                     
-                    // Обновляем информацию
                     this.currentSong.textContent = data.song || 'Информация недоступна';
                     this.djInfo.textContent = 'DJ: ' + (data.djname || 'Автоматический режим');
                     this.listenersInfo.textContent = '👥 ' + (data.listeners || 0) + ' слушателей';
                     
-                    // Обновляем последние песни
                     this.updateLastSongs(data.songs);
                     
                 } catch (error) {
-                    console.log('Ошибка получения информации, но не показываем пользователю');
+                    console.log('Ошибка получения информации');
                 }
             }
             
@@ -434,14 +447,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             new RadioPlayer();
         });
-    </script>
-    
-    <!-- Скрипт myradio24 (опционально) -->
-    <script src="https://myradio24.com/player/player.js?v3.31" 
-            data-radio="98353" 
-            data-interval="15" 
-            data-vmid="0" 
-            data-lang="ru">
     </script>
 </body>
 </html>
