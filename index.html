@@ -13,14 +13,16 @@
             min-height: 100vh;
             margin: 0;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 10px;
         }
         
         .player-container {
             background: white;
-            padding: 30px;
+            padding: 20px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            width: 400px;
+            width: 100%;
+            max-width: 400px;
             text-align: center;
         }
         
@@ -71,6 +73,7 @@
             justify-content: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .big-play-button:hover {
@@ -137,6 +140,7 @@
             padding: 10px;
             background: #e3f2fd;
             border-radius: 5px;
+            word-break: break-word;
         }
         
         .dj-info {
@@ -148,7 +152,7 @@
         .listeners-info {
             background: #4caf50;
             color: white;
-            padding: 8px;
+            padding: 8px 15px;
             border-radius: 20px;
             display: inline-block;
             font-weight: bold;
@@ -208,6 +212,15 @@
             background: #f44336;
             color: white;
         }
+        
+        .mobile-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -261,15 +274,9 @@
         </div>
     </div>
     
-    <!-- Скрипт myradio24 (вставляем ДО нашего скрипта) -->
-    <script src="https://myradio24.com/player/player.js?v3.31" 
-            data-radio="98353" 
-            data-interval="15" 
-            data-vmid="0" 
-            data-lang="ru">
-    </script>
+    <!-- Скрытый аудио элемент для мобильных -->
+    <audio id="hiddenAudio" preload="none"></audio>
     
-    <!-- Наш скрипт управления (после их скрипта) -->
     <script>
         // Конфигурация
         const RADIO_STREAM = 'https://myradio24.org/98353';
@@ -290,9 +297,12 @@
                 this.stationName = document.getElementById('stationName');
                 this.streamUrl = document.getElementById('streamUrl');
                 
+                // Создаем свой аудио элемент вместо использования их
+                this.audio = document.getElementById('hiddenAudio');
+                
                 // Переменные состояния
                 this.isPlaying = false;
-                this.myAudio = null;
+                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
                 // Устанавливаем название станции
                 this.stationName.textContent = STATION_NAME;
@@ -304,78 +314,110 @@
                 // Устанавливаем начальную громкость
                 const savedVolume = localStorage.getItem('radioVolume') || 70;
                 this.volumeSlider.value = savedVolume;
+                this.audio.volume = savedVolume / 100;
                 this.volumeValue.textContent = savedVolume + '%';
                 
                 // Запускаем обновление информации
                 this.fetchRadioInfo();
                 setInterval(() => this.fetchRadioInfo(), 15000);
                 
-                // Ищем аудио элемент каждые 2 секунды (их скрипт создает его с задержкой)
-                this.findAudioElement();
-                setInterval(() => this.findAudioElement(), 2000);
+                // Для мобильных - показываем подсказку при первой загрузке
+                if (this.isMobile) {
+                    this.showMobileHint();
+                }
             }
             
             setupEventListeners() {
                 // Кнопка воспроизведения
-                this.playBtn.addEventListener('click', () => this.togglePlay());
+                this.playBtn.addEventListener('click', () => {
+                    // Для мобильных - нужно по тапу запустить
+                    if (this.isMobile && !this.isPlaying) {
+                        // Создаем временный контекст для разблокировки аудио
+                        this.playMobile();
+                    } else {
+                        this.togglePlay();
+                    }
+                });
                 
                 // Ползунок громкости
                 this.volumeSlider.addEventListener('input', (e) => {
                     const volume = e.target.value;
                     this.volumeValue.textContent = volume + '%';
+                    this.audio.volume = volume / 100;
                     localStorage.setItem('radioVolume', volume);
-                    
-                    // Если нашли аудио элемент - меняем громкость
-                    if (this.myAudio) {
-                        this.myAudio.volume = volume / 100;
+                });
+                
+                // Обработка событий аудио
+                this.audio.addEventListener('play', () => {
+                    this.isPlaying = true;
+                    this.updateButtonState();
+                    this.updateStatus('🔊 В эфире', 'playing');
+                });
+                
+                this.audio.addEventListener('pause', () => {
+                    this.isPlaying = false;
+                    this.updateButtonState();
+                    this.updateStatus('⏸ Пауза', 'paused');
+                });
+                
+                this.audio.addEventListener('error', (e) => {
+                    console.log('Ошибка воспроизведения', e);
+                    if (this.isPlaying) {
+                        // Пробуем переподключиться
+                        setTimeout(() => {
+                            if (this.isPlaying) {
+                                this.audio.src = RADIO_STREAM;
+                                this.audio.play().catch(() => {});
+                            }
+                        }, 2000);
                     }
                 });
+                
+                // Обработка нажатия на документ для мобильных
+                document.addEventListener('touchstart', () => {
+                    // Это поможет разблокировать аудио на некоторых мобильных браузерах
+                }, { once: true });
             }
             
-            findAudioElement() {
-                // Ищем аудио элемент, который создал скрипт myradio24
-                const audioElement = document.querySelector('audio');
-                if (audioElement && audioElement !== this.myAudio) {
-                    console.log('Нашли аудио элемент!');
-                    this.myAudio = audioElement;
-                    
-                    // Устанавливаем сохраненную громкость
-                    this.myAudio.volume = this.volumeSlider.value / 100;
-                    
-                    // Отслеживаем состояние
-                    this.myAudio.addEventListener('play', () => {
-                        this.isPlaying = true;
-                        this.updateButtonState();
-                        this.updateStatus('🔊 В эфире', 'playing');
-                    });
-                    
-                    this.myAudio.addEventListener('pause', () => {
-                        this.isPlaying = false;
-                        this.updateButtonState();
-                        this.updateStatus('⏸ Пауза', 'paused');
-                    });
-                    
-                    this.myAudio.addEventListener('error', () => {
-                        console.log('Ошибка воспроизведения');
-                        this.isPlaying = false;
-                        this.updateButtonState();
-                        this.updateStatus('⏸ Пауза', 'paused');
+            playMobile() {
+                // Специальная обработка для мобильных устройств
+                this.audio.src = RADIO_STREAM;
+                
+                // Пробуем воспроизвести
+                const playPromise = this.audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log('Мобильный браузер заблокировал воспроизведение');
+                        // Показываем сообщение что нужно нажать еще раз
+                        alert('Нажмите кнопку еще раз после загрузки страницы');
                     });
                 }
             }
             
             togglePlay() {
-                if (!this.myAudio) {
-                    console.log('Аудио еще не инициализировано');
-                    return;
-                }
-                
                 if (this.isPlaying) {
-                    this.myAudio.pause();
+                    this.audio.pause();
+                    this.audio.src = ''; // Очищаем источник
                 } else {
-                    this.myAudio.play().catch(e => {
-                        console.log('Ошибка воспроизведения');
-                    });
+                    // Устанавливаем источник и запускаем
+                    this.audio.src = RADIO_STREAM;
+                    this.audio.load(); // Важно для мобильных
+                    
+                    const playPromise = this.audio.play();
+                    
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.log('Ошибка воспроизведения:', error);
+                            this.isPlaying = false;
+                            this.updateButtonState();
+                            this.updateStatus('⏸ Ошибка', 'paused');
+                            
+                            if (this.isMobile) {
+                                alert('На некоторых телефонах нужно нажать кнопку несколько раз');
+                            }
+                        });
+                    }
                 }
             }
             
@@ -441,11 +483,19 @@
                     this.songsList.appendChild(songElement);
                 });
             }
+            
+            showMobileHint() {
+                // Показываем подсказку для мобильных
+                const hint = document.createElement('div');
+                hint.className = 'mobile-warning';
+                hint.innerHTML = '📱 На телефоне: нажмите кнопку включения, подождите 2-3 секунды';
+                this.playerContainer.insertBefore(hint, this.infoPanel);
+            }
         }
         
         // Запускаем плеер после загрузки страницы
         document.addEventListener('DOMContentLoaded', () => {
-            new RadioPlayer();
+            window.player = new RadioPlayer();
         });
     </script>
 </body>
