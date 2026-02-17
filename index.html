@@ -119,10 +119,22 @@
             background: #e2e8f0;
             outline: none;
             -webkit-appearance: none;
+            appearance: none;
         }
         
         .volume-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+            transition: transform 0.1s;
+            border: 2px solid white;
+        }
+        
+        .volume-slider::-moz-range-thumb {
             width: 24px;
             height: 24px;
             border-radius: 50%;
@@ -301,8 +313,8 @@
                 streamUrl: 'https://myradio24.org/98353',
                 apiUrl: 'https://myradio24.com/users/98353/status.json',
                 stationName: 'Моё Радио',
-                updateInterval: 10000, // 10 секунд
-                reconnectTimeout: 3000 // 3 секунды
+                updateInterval: 10000,
+                reconnectTimeout: 3000
             };
 
             class RadioPlayer {
@@ -313,6 +325,7 @@
                     this.reconnectTimer = null;
                     this.updateTimer = null;
                     
+                    // Важно: сразу создаем аудио элемент
                     this.init();
                 }
 
@@ -349,42 +362,80 @@
                     // Запускаем обновление информации
                     this.fetchStationInfo();
                     this.startInfoUpdates();
-
-                    // Проверяем поддержку аудио
-                    this.checkAudioSupport();
                 }
 
                 setupEventListeners() {
                     // Кнопка воспроизведения
                     this.elements.playBtn.addEventListener('click', () => this.togglePlay());
                     
-                    // Ползунок громкости
+                    // ПОЛЗУНОК ГРОМКОСТИ - главный фикс
                     this.elements.volumeSlider.addEventListener('input', (e) => {
-                        const value = e.target.value;
+                        const value = parseInt(e.target.value);
                         this.setVolume(value);
                     });
 
-                    // События аудио
-                    this.audio.addEventListener('play', () => this.onPlay());
-                    this.audio.addEventListener('pause', () => this.onPause());
-                    this.audio.addEventListener('error', (e) => this.onError(e));
-                    this.audio.addEventListener('waiting', () => this.onWaiting());
-                    this.audio.addEventListener('canplay', () => this.onCanPlay());
-                    
-                    // Обработка потери соединения
-                    this.audio.addEventListener('stalled', () => this.onStalled());
-                    this.audio.addEventListener('suspend', () => this.onSuspend());
+                    // Сохраняем громкость при отпускании ползунка
+                    this.elements.volumeSlider.addEventListener('change', (e) => {
+                        const value = parseInt(e.target.value);
+                        localStorage.setItem('radioVolume', value);
+                    });
 
-                    // Сохраняем громкость при изменении
-                    this.elements.volumeSlider.addEventListener('change', () => {
-                        localStorage.setItem('radioVolume', this.elements.volumeSlider.value);
+                    // События аудио
+                    this.audio.addEventListener('play', () => {
+                        this.isPlaying = true;
+                        this.isLoading = false;
+                        this.updateUI();
+                    });
+                    
+                    this.audio.addEventListener('pause', () => {
+                        this.isPlaying = false;
+                        this.isLoading = false;
+                        this.updateUI();
+                    });
+                    
+                    this.audio.addEventListener('error', (e) => {
+                        console.error('Audio error:', e);
+                        if (this.isPlaying) {
+                            this.scheduleReconnect();
+                        } else {
+                            this.isPlaying = false;
+                            this.isLoading = false;
+                            this.updateUI();
+                        }
+                    });
+                    
+                    this.audio.addEventListener('waiting', () => {
+                        this.isLoading = true;
+                        this.updateUI();
+                    });
+                    
+                    this.audio.addEventListener('canplay', () => {
+                        this.isLoading = false;
+                        this.updateUI();
+                    });
+                    
+                    this.audio.addEventListener('stalled', () => {
+                        if (this.isPlaying) {
+                            this.scheduleReconnect();
+                        }
                     });
                 }
 
-                checkAudioSupport() {
-                    if (!this.audio.canPlayType('audio/mpeg')) {
-                        console.warn('MP3 support may be limited');
+                // Метод для установки громкости
+                setVolume(value) {
+                    // Убеждаемся, что значение в пределах 0-100
+                    const safeValue = Math.min(100, Math.max(0, parseInt(value) || 0));
+                    
+                    // Обновляем отображение процентов
+                    this.elements.volumePercent.textContent = safeValue + '%';
+                    
+                    // Устанавливаем громкость аудио (0-1)
+                    if (this.audio) {
+                        this.audio.volume = safeValue / 100;
                     }
+                    
+                    // Обновляем визуальное заполнение ползунка
+                    this.elements.volumeSlider.style.background = `linear-gradient(to right, #667eea 0%, #667eea ${safeValue}%, #e2e8f0 ${safeValue}%, #e2e8f0 100%)`;
                 }
 
                 togglePlay() {
@@ -401,7 +452,7 @@
                     if (this.isLoading) return;
                     
                     this.isLoading = true;
-                    this.updatePlayButtonState(true);
+                    this.updateUI();
                     
                     // Устанавливаем источник и запускаем
                     this.audio.src = CONFIG.streamUrl;
@@ -418,20 +469,21 @@
                             })
                             .catch((error) => {
                                 console.error('Playback failed:', error);
-                                this.handlePlaybackError();
+                                this.isPlaying = false;
+                                this.isLoading = false;
+                                this.updateUI();
                             });
                     }
                 }
 
                 pause() {
-                    // Очищаем таймер переподключения
                     if (this.reconnectTimer) {
                         clearTimeout(this.reconnectTimer);
                         this.reconnectTimer = null;
                     }
 
                     this.audio.pause();
-                    this.audio.src = ''; // Очищаем источник для экономии трафика
+                    this.audio.src = '';
                     this.audio.load();
                     
                     this.isPlaying = false;
@@ -439,70 +491,12 @@
                     this.updateUI();
                 }
 
-                setVolume(value) {
-                    const volume = Math.min(100, Math.max(0, value)) / 100;
-                    this.audio.volume = volume;
-                    this.elements.volumePercent.textContent = Math.round(volume * 100) + '%';
-                    
-                    // Визуальная обратная связь
-                    this.elements.volumeSlider.style.background = `linear-gradient(to right, #667eea 0%, #667eea ${value}%, #e2e8f0 ${value}%, #e2e8f0 100%)`;
-                }
-
-                onPlay() {
-                    this.isPlaying = true;
-                    this.isLoading = false;
-                    this.updateUI();
-                    
-                    // Показываем уведомление (если разрешено)
-                    this.showNotification('Радио играет');
-                }
-
-                onPause() {
-                    this.isPlaying = false;
-                    this.isLoading = false;
-                    this.updateUI();
-                }
-
-                onError(error) {
-                    console.error('Audio error:', error);
-                    
-                    if (this.isPlaying) {
-                        // Пытаемся переподключиться
-                        this.scheduleReconnect();
-                    } else {
-                        this.isPlaying = false;
-                        this.isLoading = false;
-                        this.updateUI();
-                    }
-                }
-
-                onWaiting() {
-                    this.isLoading = true;
-                    this.updateUI();
-                }
-
-                onCanPlay() {
-                    this.isLoading = false;
-                    this.updateUI();
-                }
-
-                onStalled() {
-                    console.log('Playback stalled');
-                    if (this.isPlaying) {
-                        this.scheduleReconnect();
-                    }
-                }
-
-                onSuspend() {
-                    console.log('Playback suspended');
-                }
-
                 scheduleReconnect() {
                     if (this.reconnectTimer) return;
                     
                     this.reconnectTimer = setTimeout(() => {
                         if (this.isPlaying) {
-                            console.log('Attempting to reconnect...');
+                            console.log('Reconnecting...');
                             this.audio.src = CONFIG.streamUrl;
                             this.audio.load();
                             this.audio.play().catch(() => {});
@@ -511,14 +505,25 @@
                     }, CONFIG.reconnectTimeout);
                 }
 
-                handlePlaybackError() {
-                    this.isPlaying = false;
-                    this.isLoading = false;
-                    this.updateUI();
-                    
-                    // На мобильных устройствах показываем понятное сообщение
-                    if (this.isMobileDevice()) {
-                        this.elements.statusBadge.textContent = 'Нажмите кнопку еще раз';
+                updateUI() {
+                    // Обновляем кнопку
+                    if (this.isPlaying) {
+                        this.elements.playBtn.innerHTML = '⏸';
+                        this.elements.playBtn.classList.add('playing');
+                        this.elements.statusBadge.textContent = '🔊 В эфире';
+                        this.elements.statusBadge.className = 'status-badge playing';
+                    } else {
+                        this.elements.playBtn.innerHTML = '▶';
+                        this.elements.playBtn.classList.remove('playing');
+                        this.elements.statusBadge.textContent = '⏸ Пауза';
+                        this.elements.statusBadge.className = 'status-badge paused';
+                    }
+
+                    // Показываем загрузку
+                    if (this.isLoading) {
+                        this.elements.playBtn.style.opacity = '0.7';
+                    } else {
+                        this.elements.playBtn.style.opacity = '1';
                     }
                 }
 
@@ -530,49 +535,38 @@
                             cache: 'no-cache'
                         });
                         
-                        if (!response.ok) throw new Error('Network response was not ok');
+                        if (!response.ok) throw new Error('Network error');
                         
                         const data = await response.json();
-                        this.updateStationInfo(data);
+                        
+                        // Обновляем информацию
+                        if (data.song) {
+                            this.elements.currentSong.textContent = data.song;
+                        }
+                        
+                        if (data.djname) {
+                            this.elements.djName.textContent = data.djname;
+                        }
+                        
+                        if (data.listeners !== undefined) {
+                            this.elements.listenersCount.textContent = data.listeners;
+                        }
+                        
+                        if (data.plisteners !== undefined) {
+                            this.elements.peakListeners.textContent = data.plisteners;
+                        }
+                        
+                        if (data.kbps !== undefined) {
+                            this.elements.quality.textContent = data.kbps;
+                            this.elements.bitrate.textContent = data.kbps + ' kbps';
+                        }
+
+                        // Обновляем историю
+                        if (data.songs && Array.isArray(data.songs)) {
+                            this.updateHistory(data.songs);
+                        }
                     } catch (error) {
                         console.error('Failed to fetch station info:', error);
-                        this.updateStationInfo(null);
-                    }
-                }
-
-                updateStationInfo(data) {
-                    if (!data) {
-                        this.elements.currentSong.textContent = 'Информация временно недоступна';
-                        return;
-                    }
-
-                    // Обновляем текущий трек
-                    if (data.song) {
-                        this.elements.currentSong.textContent = data.song;
-                    }
-
-                    // Обновляем информацию о DJ
-                    if (data.djname) {
-                        this.elements.djName.textContent = data.djname;
-                    }
-
-                    // Обновляем статистику
-                    if (data.listeners !== undefined) {
-                        this.elements.listenersCount.textContent = data.listeners;
-                    }
-                    
-                    if (data.plisteners !== undefined) {
-                        this.elements.peakListeners.textContent = data.plisteners;
-                    }
-                    
-                    if (data.kbps !== undefined) {
-                        this.elements.quality.textContent = data.kbps;
-                        this.elements.bitrate.textContent = data.kbps + ' kbps';
-                    }
-
-                    // Обновляем историю песен
-                    if (data.songs && Array.isArray(data.songs)) {
-                        this.updateHistory(data.songs);
                     }
                 }
 
@@ -597,84 +591,26 @@
                     this.elements.historyList.innerHTML = historyHtml;
                 }
 
-                updateUI() {
-                    // Обновляем кнопку воспроизведения
-                    if (this.isPlaying) {
-                        this.elements.playBtn.innerHTML = '⏸';
-                        this.elements.playBtn.classList.add('playing');
-                        this.elements.statusBadge.textContent = '🔊 В эфире';
-                        this.elements.statusBadge.className = 'status-badge playing';
-                    } else {
-                        this.elements.playBtn.innerHTML = '▶';
-                        this.elements.playBtn.classList.remove('playing');
-                        this.elements.statusBadge.textContent = '⏸ Пауза';
-                        this.elements.statusBadge.className = 'status-badge paused';
-                    }
-
-                    // Показываем состояние загрузки
-                    if (this.isLoading) {
-                        this.elements.playBtn.style.opacity = '0.7';
-                    } else {
-                        this.elements.playBtn.style.opacity = '1';
-                    }
-                }
-
-                updatePlayButtonState(isLoading) {
-                    this.elements.playBtn.style.opacity = isLoading ? '0.7' : '1';
-                }
-
                 startInfoUpdates() {
-                    // Обновляем информацию каждые N секунд
                     this.updateTimer = setInterval(() => {
                         this.fetchStationInfo();
                     }, CONFIG.updateInterval);
                 }
 
                 loadSettings() {
+                    // Загружаем громкость из localStorage
                     const savedVolume = localStorage.getItem('radioVolume');
                     if (savedVolume !== null) {
-                        this.elements.volumeSlider.value = savedVolume;
-                        this.setVolume(savedVolume);
+                        const volume = parseInt(savedVolume);
+                        this.elements.volumeSlider.value = volume;
+                        this.setVolume(volume);
                     } else {
-                        this.setVolume(75); // Значение по умолчанию
+                        this.setVolume(75); // По умолчанию 75%
                     }
-                }
-
-                showNotification(message) {
-                    // Показываем уведомление только если страница не в фокусе
-                    if (document.hidden && Notification.permission === 'granted') {
-                        new Notification('Радио', { body: message });
-                    }
-                }
-
-                isMobileDevice() {
-                    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                }
-
-                destroy() {
-                    // Очищаем все таймеры
-                    if (this.updateTimer) {
-                        clearInterval(this.updateTimer);
-                    }
-                    if (this.reconnectTimer) {
-                        clearTimeout(this.reconnectTimer);
-                    }
-                    
-                    // Останавливаем воспроизведение
-                    this.pause();
-                    
-                    // Удаляем обработчики
-                    this.audio.removeEventListener('play', this.onPlay);
-                    this.audio.removeEventListener('pause', this.onPause);
                 }
             }
 
-            // Запрашиваем разрешение на уведомления (опционально)
-            if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
-            }
-
-            // Запускаем плеер после полной загрузки страницы
+            // Запускаем плеер
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
                     window.radioPlayer = new RadioPlayer();
